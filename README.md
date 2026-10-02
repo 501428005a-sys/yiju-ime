@@ -13,6 +13,11 @@ Type a sentence in Chinese — get the whole sentence in English, right under yo
   <img src="https://img.shields.io/badge/free-open%20source-brightgreen" alt="免费开源">
 </p>
 
+<p align="center">
+  <img src="docs/images/demo.gif" width="760" alt="演示：打完「今天天气很好」停顿 1 秒，候选窗下方出现整句译文；接着打下一句，译文行留在候选下方"><br>
+  <sub>示意动画，按译句候选窗的实际样式与触发节奏制作（<a href="assets/demo/">assets/demo</a>）</sub>
+</p>
+
 ---
 
 ## 为什么做译句

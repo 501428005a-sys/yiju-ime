@@ -1,0 +1,196 @@
+<!doctype html>
+<!-- README 里 demo.gif 的示意动画。候选窗的尺寸、颜色照搬 apps/windows/server/src/ui/candidates/（浅色主题，按 125% 缩放），
+     节奏照搬 dispatch/echo/mod.rs（上屏后停顿 1 秒 / 句末标点触发，先「翻译中…」，每段停留 5 秒）。
+     render(t) 画第 t 秒的画面；render.mjs 逐帧截图再用 ffmpeg 合成 GIF。 -->
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<style>
+  :root {
+    --s: 1.25;
+    --text: #1d1d1f; --gloss: #6b6b70; --faint: #a0a0a6; --index: #a0a0a6;
+    --bg: #f8f8f8; --hl: #cfe4f9;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { width: 760px; height: 470px; overflow: hidden; }
+  body {
+    font-family: "Microsoft YaHei UI", "Microsoft YaHei", sans-serif;
+    background: linear-gradient(135deg, #dbe6f3, #e9e4f2);
+    position: relative;
+  }
+  .note {
+    position: absolute; left: 30px; top: 22px; width: 700px; height: 426px;
+    background: #fff; border-radius: 8px; border: 1px solid #d6d6db;
+    box-shadow: 0 8px 28px rgba(30, 40, 70, .16);
+    overflow: hidden;
+  }
+  .title {
+    height: 38px; display: flex; align-items: center; padding-left: 16px;
+    font-size: 13px; color: #333; background: #f3f3f5; border-bottom: 1px solid #e6e6ea;
+  }
+  .title .ctl { margin-left: auto; display: flex; }
+  .title .ctl span { width: 46px; text-align: center; color: #666; font-size: 14px; }
+  .menu { height: 30px; display: flex; gap: 18px; align-items: center; padding-left: 16px; font-size: 13px; color: #444; }
+  .page { position: absolute; left: 0; top: 68px; right: 0; bottom: 0; padding: 14px 20px; font-size: 20px; line-height: 34px; color: #1d1d1f; }
+  .line { height: 34px; white-space: pre; position: relative; }
+  .pre { text-decoration: underline; text-decoration-color: #1d1d1f; text-underline-offset: 4px; }
+  .caret { display: inline-block; width: 1.5px; height: 24px; background: #1d1d1f; vertical-align: -5px; }
+  .anchor { display: inline-block; width: 0; height: 24px; vertical-align: -5px; }
+
+  /* 候选窗：theme/mod.rs 的 padding 8 / row_padding 4 / column_gap 8 / corner_radius 8，字号 16 / 12 / 11，均 ×1.25 */
+  .cand {
+    position: absolute; background: var(--bg); border-radius: 10px;
+    box-shadow: 0 4px 16px rgba(0,0,0,.18), 0 0 0 1px rgba(0,0,0,.06);
+    padding: 10px; display: none;
+  }
+  .top { font-size: 15px; line-height: 20px; padding: 5px 0; color: var(--gloss); white-space: pre; }
+  .top .c { display: inline-block; width: 1px; height: 20px; background: var(--text); vertical-align: top; }
+  .rows { display: grid; grid-template-columns: auto auto auto; column-gap: 10px; margin: 0 -5px; padding: 0 5px; position: relative; }
+  .row { display: contents; }
+  .row > div { position: relative; z-index: 1; height: 36px; line-height: 26px; padding: 5px 0; white-space: pre; }
+  .idx { font-size: 13.75px; color: var(--index); padding-top: 7px !important; }
+  .txt { font-size: 20px; color: var(--text); }
+  .ann { font-size: 15px; color: var(--gloss); padding-top: 7px !important; }
+  .ann i { font-style: normal; color: var(--faint); }
+  .hl { position: absolute; z-index: 0; left: 0; right: 0; height: 36px; background: var(--hl); border-radius: 5px; }
+</style>
+</head>
+<body>
+<div class="note">
+  <div class="title">无标题 - 记事本<div class="ctl"><span>—</span><span>☐</span><span>✕</span></div></div>
+  <div class="menu"><span>文件</span><span>编辑</span><span>查看</span></div>
+  <div class="page" id="page"></div>
+</div>
+<div class="cand" id="cand"></div>
+<script>
+// 两句：拼音音节、上屏文字、各阶段候选（[文字, 词性, 释义]）、译文。
+const S1 = {
+  syl: ["jin", "tian", "tian", "qi", "hen", "hao"],
+  out: "今天天气很好",
+  stages: [
+    [3, [["进"], ["今"], ["金", "n.", "gold"], ["近"], ["尽"]]],
+    [7, [["今天", "n.", "today"], ["金田"], ["今"], ["进"], ["金", "n.", "gold"]]],
+    [13, [["今天天气"], ["今天", "n.", "today"], ["金田"], ["今"], ["进"]]],
+    [99, [["今天天气很好"], ["今天天气"], ["今天", "n.", "today"], ["金田"], ["今"]]],
+  ],
+  tr: "The weather is really nice today.",
+};
+const S2 = {
+  syl: ["wo", "men", "qu", "chi", "fan", "ba"],
+  out: "我们去吃饭吧",
+  stages: [
+    [2, [["我", "pron.", "I"], ["喔"], ["握"], ["窝"], ["沃"]]],
+    [5, [["我们", "pron.", "we"], ["我", "pron.", "I"], ["喔"], ["握"], ["窝"]]],
+    [7, [["我们去"], ["我们", "pron.", "we"], ["我", "pron.", "I"], ["握"], ["窝"]]],
+    [13, [["我们去吃饭"], ["我们去"], ["我们", "pron.", "we"], ["我", "pron.", "I"], ["握"]]],
+    [99, [["我们去吃饭吧"], ["我们去吃饭"], ["我们去"], ["我们", "pron.", "we"], ["我", "pron.", "I"]]],
+  ],
+  tr: "Let's go eat.",
+};
+
+const KEY = 0.08;          // 每个字母
+const SHOW_FOR = 5;        // echo/mod.rs SHOW_FOR
+const PAUSE = 1;           // echo/mod.rs PAUSE
+const LATENCY = 0.7;       // 译文回来要多久（DeepSeek 一般不到 1 秒）
+
+// 时间线
+const t1 = 0.5;                                   // 开始打第一句
+const c1 = t1 + S1.syl.join("").length * KEY + 0.25;  // 空格上屏
+const e1 = c1 + PAUSE;                            // 停顿 1 秒，触发
+const a1 = e1 + LATENCY;                          // 译文到
+const enter = a1 + 0.8;                           // 回车换行（buffer 空，不触发）
+const t2 = enter + 0.25;
+const c2 = t2 + S2.syl.join("").length * KEY + 0.25;
+const e2 = c2 + 0.3;                              // 打句号，立刻触发
+const a2 = e2 + LATENCY;
+const END = a2 + 3.0;
+
+function pinyin(sent, n) {
+  let out = [], left = n;
+  for (const s of sent.syl) {
+    if (left <= 0) break;
+    out.push(s.slice(0, left));
+    left -= s.length;
+  }
+  return out.join("'");
+}
+function stage(sent, n) { return sent.stages.find(([k]) => n <= k)[1]; }
+
+function echoLines(t) {
+  const lines = [];
+  for (const [e, a, tr] of [[e1, a1, S1.tr], [e2, a2, S2.tr]]) {
+    if (t >= e && t < a) lines.push("翻译中…");
+    else if (t >= a && t < a + SHOW_FOR) lines.push(tr);
+  }
+  return lines;
+}
+
+const esc = s => s.replace(/&/g, "&amp;").replace(/</g, "&lt;");
+
+function render(t) {
+  const page = document.getElementById("page");
+  const cand = document.getElementById("cand");
+  let lines = [""], comp = null;   // comp = [句子, 已敲字母数]
+  const typed = (start, sent) => Math.min(sent.syl.join("").length, Math.floor((t - start) / KEY) + 1);
+
+  if (t >= t1 && t < c1) comp = [S1, typed(t1, S1)];
+  if (t >= c1) lines[0] = S1.out;
+  if (t >= enter) lines.push("");
+  if (t >= t2 && t < c2) comp = [S2, typed(t2, S2)];
+  if (t >= c2) lines[1] = S2.out;
+  if (t >= e2) lines[1] += "。";
+
+  const blink = comp || Math.floor(t / 0.5) % 2 === 0;
+  const last = lines.length - 1;
+  page.innerHTML = lines.map((l, i) => {
+    let h = esc(l);
+    if (i === last) {
+      h += '<span class="anchor" id="anchor"></span>';
+      if (comp) h += `<span class="pre">${pinyin(comp[0], comp[1])}</span>`;
+      h += blink ? '<span class="caret"></span>' : '<span class="anchor"></span>';
+    }
+    return `<div class="line">${h}</div>`;
+  }).join("");
+
+  // 候选窗贴在组句起点下方；没在组句时译文行摆在最近一次的光标位置
+  const echo = echoLines(t);
+  if (!comp && !echo.length) { cand.style.display = "none"; return; }
+  let html = "";
+  const rows = comp ? stage(comp[0], comp[1]) : [];
+  if (comp) html += `<div class="top">${pinyin(comp[0], comp[1])}<span class="c"></span></div>`;
+  html += '<div class="rows">';
+  if (comp) html += '<div class="hl" style="top:0"></div>';
+  rows.forEach(([w, pos, g], i) => {
+    const ann = pos ? `<i>${pos} </i>${g}` : "";
+    html += `<div class="row"><div class="idx">${i + 1}</div><div class="txt">${w}</div><div class="ann">${ann}</div></div>`;
+  });
+  echo.forEach(e => {
+    html += `<div class="row"><div class="idx">译</div><div class="txt">${esc(e)}</div><div class="ann"></div></div>`;
+  });
+  html += "</div>";
+  cand.innerHTML = html;
+  cand.style.display = "block";
+  const r = document.getElementById("anchor").getBoundingClientRect();
+  // 上屏后光标矩形停在刚上屏那段的起点（最近一次组句的位置）
+  let x = r.left;
+  if (!comp) {
+    const sent = t >= c2 ? S2 : S1;
+    const w = measure(sent.out + (t >= e2 && sent === S2 ? "。" : ""));
+    x = r.left - w;
+  }
+  cand.style.left = Math.round(x - 10) + "px";
+  cand.style.top = Math.round(r.bottom + 6) + "px";
+}
+
+function measure(s) {
+  const c = measure.c || (measure.c = document.createElement("canvas").getContext("2d"));
+  c.font = '20px "Microsoft YaHei UI"';
+  return c.measureText(s).width;
+}
+
+window.render = render;
+window.DURATION = END;
+render(Number(new URLSearchParams(location.search).get("t") || 1.5));
+</script>
+</body>
+</html>
