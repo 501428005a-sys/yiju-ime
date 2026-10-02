@@ -9,7 +9,7 @@ Type a sentence in Chinese — get the whole sentence in English, right under yo
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0--or--later-blue" alt="GPL-3.0-or-later"></a>
-  <img src="https://img.shields.io/badge/Windows-10%2F11-blue" alt="Windows 10/11">
+  <img src="https://img.shields.io/badge/Windows-11-blue" alt="Windows 11">
   <img src="https://img.shields.io/badge/free-open%20source-brightgreen" alt="免费开源">
 </p>
 
@@ -56,9 +56,17 @@ jintiantianqihenhao␣         ← 照常打字、上屏
 
 ## 现状
 
-- 当前版本基于青简 0.1.4，**仅 Windows**（10 1809+ / 11，64 位）。
-- 独立安装包正在制作中，发布后在 [Releases](https://github.com/501428005a-sys/yiju-ime/releases) 下载。
-- 开发者可先体验：装好青简 0.1.4 后，用本仓库编出的 `qingjian-server.exe` 替换安装目录里的同名文件（先备份），注销重新登录即可。
+- 当前版本基于青简 0.1.4，**仅 Windows 11**（64 位）。Windows 10 的支持在做。
+
+## 安装
+
+1. 到 [Releases](https://github.com/501428005a-sys/yiju-ime/releases) 下载 `yiju-<版本>-windows-x86_64-setup.exe`，双击安装（需要管理员权限）。
+2. 安装包还没有代码签名，Windows SmartScreen 会拦截：点「更多信息 → 仍要运行」。
+3. 装好后按 `Win + Space` 切到「译句」；建议注销重新登录一次，让所有程序都用上。
+4. 按下面「配置云服务」填好 AI 密钥，整句翻译就能用了。
+
+- 如果电脑上装着**青简**，安装程序会先提示卸载它（两者不能同时安装）；青简的配置、密钥与学习数据会保留，译句直接接着用。
+- 卸载：「设置 → 应用」里找到「译句」卸载即可，配置与学习数据保留在 `%APPDATA%\Qingjian`。
 
 ## 配置云服务
 
@@ -70,7 +78,8 @@ jintiantianqihenhao␣         ← 照常打字、上屏
 
 ## 从源码编译（Windows）
 
-官方工具链（MSVC）与上游一致，见 [apps/windows/README.md](apps/windows/README.md)。不想装 Visual Studio 时也可以用 Rust 的 GNU 工具链：
+官方工具链（MSVC）与上游一致，见 [apps/windows/README.md](apps/windows/README.md)。不想装 Visual Studio 时也可以用 Rust 的 GNU 工具链
+（打安装包：`apps\windows\installer\build.ps1 -Gnu`，需要 MinGW-w64 的 64 / 32 位版、`i686-pc-windows-gnu` 目标与 Inno Setup 7；GNU 版设置程序只能在 Windows 11 上运行）：
 
 ```powershell
 rustup toolchain install 1.96.0-x86_64-pc-windows-gnu   # 另需 MinGW-w64（如 winlibs）在 PATH 中

@@ -32,6 +32,12 @@
 ; 按版本起名的 TSF DLL（见文件头「升级」）。
 #define TsfDll "qingjian_tsf-" + AppVersion + ".dll"
 #define TsfDll32 "qingjian_tsf-" + AppVersion + "-x86.dll"
+; 32 位 DLL 的 Rust 目标：MSVC 工具链用缺省值，GNU 工具链由 build.ps1 -Gnu 传 i686-pc-windows-gnu。
+#ifndef TargetX86
+  #define TargetX86 "i686-pc-windows-msvc"
+#endif
+; 上游青简的安装 AppId：两者共用 TSF 注册信息与数据目录，不能同时装，装译句前先卸载它（见 [Code] InitializeSetup）。
+#define QingjianUninstallKey "Software\Microsoft\Windows\CurrentVersion\Uninstall\{A7E3C1F2-5B94-4D6A-9C0E-2F8B1D3A6E70}_is1"
 
 [Setup]
 AppId={{451604EF-DB60-4FC5-9F74-9EB58FD2611A}
@@ -40,18 +46,23 @@ AppVersion={#AppVersion}
 AppPublisher={#Publisher}
 AppSupportURL={#WebsiteUrl}
 VersionInfoVersion={#AppVersionNumeric}
-DefaultDirName={autopf}\Qingjian
+DefaultDirName={autopf}\YiJu
 DefaultGroupName={#AppName}
 DisableProgramGroupPage=yes
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 ; Windows 10 1809 起（Windows App Runtime 的下限，见 docs\notes\windows-win10.md）。
-MinVersion=10.0.17763
+; GNU 工具链编的设置程序没有延迟加载 Windows 11 才有的 AppModel API，在 Windows 10 上起不来（见 settings\build.rs），
+; 这时由 build.ps1 -Gnu 传 MinWindows=10.0.22000 把安装限到 Windows 11。
+#ifndef MinWindows
+  #define MinWindows "10.0.17763"
+#endif
+MinVersion={#MinWindows}
 PrivilegesRequired=admin
 ; 别让 Restart Manager 去关所有加载了 DLL 的应用（那是每一个有文本框的应用）。
 CloseApplications=no
 OutputDir={#Repo}\target\installer
-OutputBaseFilename=qingjian-{#AppVersion}-windows-x86_64-setup
+OutputBaseFilename=yiju-{#AppVersion}-windows-x86_64-setup
 SetupIconFile={#Repo}\apps\windows\tsf\resources\qingjian.ico
 UninstallDisplayIcon={app}\qingjian.ico
 Compression=lzma2
@@ -70,7 +81,7 @@ FinishedLabel=安装完成。请注销后重新登录（或重启电脑），译
 ; —— 二进制 ——
 ; DLL 按版本起名并排装；卸载时若仍被占用，登记成重启后删。
 Source: "{#Repo}\target\release\qingjian_tsf.dll";      DestDir: "{app}"; DestName: "{#TsfDll}"; Flags: ignoreversion uninsrestartdelete
-Source: "{#Repo}\target\i686-pc-windows-msvc\release\qingjian_tsf.dll"; DestDir: "{app}"; DestName: "{#TsfDll32}"; Flags: ignoreversion uninsrestartdelete
+Source: "{#Repo}\target\{#TargetX86}\release\qingjian_tsf.dll"; DestDir: "{app}"; DestName: "{#TsfDll32}"; Flags: ignoreversion uninsrestartdelete
 Source: "{#Repo}\target\release\qingjian-settings.exe"; DestDir: "{app}"; Flags: ignoreversion
 ; 设置程序自带一份 Windows App Runtime（自包含部署：Windows 10 上机器装的框架包用不了，见 docs\notes\windows-win10.md）；
 ; 文件由 build.ps1 按 settings-runtime.txt 从 target\release 挑进 target\installer\settings-runtime，必须与 exe 同级。
@@ -167,10 +178,51 @@ begin
     Log('建安装互斥体失败');
 end;
 
+{ 上游青简的卸载程序路径；没装青简返回 False。 }
+function QingjianUninstaller(var Path: String): Boolean;
+begin
+  Result := RegQueryStringValue(HKLM64, '{#QingjianUninstallKey}', 'UninstallString', Path)
+    or RegQueryStringValue(HKLM32, '{#QingjianUninstallKey}', 'UninstallString', Path);
+  if Result then
+    Path := RemoveQuotes(Path);
+end;
+
+{ 装着青简就先卸载它（征得同意；静默安装直接卸）。配置与学习数据在 %APPDATA%\Qingjian，卸载不动，译句接着用。 }
+function RemoveQingjian: Boolean;
+var
+  Uninstaller: String;
+  ResultCode: Integer;
+  Params: String;
+begin
+  Result := True;
+  if not QingjianUninstaller(Uninstaller) then
+    Exit;
+  if not WizardSilent then
+    if MsgBox('检测到电脑上装着「青简」输入法。译句派生自青简，两者不能同时安装。' + #13#10#13#10 +
+        '是否现在卸载青简？你的配置、密钥与学习数据都会保留，译句装好后接着用。', mbConfirmation, MB_YESNO) <> IDYES then
+    begin
+      MsgBox('请先在「设置 → 应用」里卸载青简，再运行本安装程序。', mbInformation, MB_OK);
+      Result := False;
+      Exit;
+    end;
+  if WizardSilent then
+    Params := '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART'
+  else
+    Params := '/SILENT /NORESTART';
+  Exec(Uninstaller, Params, '', SW_SHOW, ewWaitUntilTerminated, ResultCode);
+  if QingjianUninstaller(Uninstaller) then
+  begin
+    if not WizardSilent then
+      MsgBox('青简没有卸载完成，请在「设置 → 应用」里手动卸载后再安装译句。', mbError, MB_OK);
+    Result := False;
+  end;
+end;
+
 function InitializeSetup: Boolean;
 begin
-  HoldInstallerMutex;
-  Result := True;
+  Result := RemoveQingjian;
+  if Result then
+    HoldInstallerMutex;
 end;
 
 function InitializeUninstall: Boolean;

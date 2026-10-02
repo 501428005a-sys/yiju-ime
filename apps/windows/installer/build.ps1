@@ -18,7 +18,9 @@
     候选窗在那几个系统界面里会被盖住，但任何机器都能起。
 #>
 [CmdletBinding()]
-param([switch]$SkipBuild, [switch]$Sign)
+param([switch]$SkipBuild, [switch]$Sign, [switch]$Gnu)
+# -Gnu：用 Rust GNU 工具链（x86_64 / i686-pc-windows-gnu + MinGW-w64）代替 MSVC；32 位 DLL 的目标跟着换。
+$X86 = if ($Gnu) { 'i686-pc-windows-gnu' } else { 'i686-pc-windows-msvc' }
 
 $ErrorActionPreference = 'Stop'
 
@@ -41,7 +43,7 @@ if (-not $SkipBuild) {
     try {
         cargo build --release --locked -p qingjian-windows-server -p qingjian-windows-tsf -p qingjian-windows-settings
         if ($LASTEXITCODE -ne 0) { throw "cargo build 失败（退出码 $LASTEXITCODE）" }
-        cargo build --release --locked -p qingjian-windows-tsf --target i686-pc-windows-msvc
+        cargo build --release --locked -p qingjian-windows-tsf --target $X86
         if ($LASTEXITCODE -ne 0) { throw "32 位 DLL cargo build 失败（退出码 $LASTEXITCODE）" }
     } finally { Pop-Location }
 }
@@ -49,13 +51,20 @@ if (-not $SkipBuild) {
 # 缺一个产物就早报错。
 $targets = @(
     'release\qingjian_tsf.dll',
-    'i686-pc-windows-msvc\release\qingjian_tsf.dll',
+    "$X86\release\qingjian_tsf.dll",
     'release\qingjian-server.exe',
     'release\qingjian-settings.exe'
 )
 foreach ($t in $targets) {
     $p = Join-Path $Repo "target\$t"
     if (-not (Test-Path $p)) { throw "缺产物 $p，先跑一次不带 -SkipBuild 的构建" }
+}
+# -Gnu：GNU 工具链的 release 产物带完整符号（MSVC 的放在 .pdb 里），装机前剥掉，体积小一半多。
+if ($Gnu) {
+    foreach ($t in $targets) {
+        & strip (Join-Path $Repo "target\$t")
+        if ($LASTEXITCODE -ne 0) { throw "strip $t 失败（PATH 里要有 MinGW-w64 的 strip）" }
+    }
 }
 
 # 1.2) 自包含 Windows App Runtime：设置程序不再依赖机器上装的框架包（Windows 10 上框架依赖的引导用不了，
@@ -67,9 +76,27 @@ $runtimeList  = Join-Path $PSScriptRoot 'settings-runtime.txt'
 $wanted = Get-Content $runtimeList -Encoding UTF8 | Where-Object { $_ -and -not $_.StartsWith('#') } | ForEach-Object { $_.Trim() }
 if (Test-Path $runtimeStage) { Remove-Item $runtimeStage -Recurse -Force }
 New-Item -ItemType Directory -Path $runtimeStage -Force | Out-Null
+# -Gnu：windows-reactor-setup 只支持 MSVC 目标，运行时不会铺到 target\release；照它的做法自己从 NuGet 取
+# Microsoft.WindowsAppSDK.Runtime（版本与 windows-reactor-setup 0.100.0 一致），解开里面的 MSIX，缓存在 target\gnu-runtime。
+$runtimeSource = Join-Path $Repo 'target\release'
+if ($Gnu) {
+    $cache = Join-Path $Repo 'target\gnu-runtime'
+    $runtimeSource = Join-Path $cache 'msix'
+    if (-not (Test-Path (Join-Path $runtimeSource 'Microsoft.WindowsAppRuntime.dll'))) {
+        Write-Host '下载 Windows App Runtime 2.4.0（NuGet）…' -ForegroundColor Cyan
+        New-Item -ItemType Directory -Path $cache -Force | Out-Null
+        $nupkg = Join-Path $cache 'runtime.zip'
+        Invoke-WebRequest 'https://www.nuget.org/api/v2/package/Microsoft.WindowsAppSDK.Runtime/2.4.0' -OutFile $nupkg -UseBasicParsing
+        $pkgDir = Join-Path $cache 'pkg'
+        Expand-Archive $nupkg -DestinationPath $pkgDir -Force
+        $msix = Join-Path $cache 'runtime-msix.zip'
+        Copy-Item (Join-Path $pkgDir 'tools\MSIX\win10-x64\Microsoft.WindowsAppRuntime.2.msix') $msix -Force
+        Expand-Archive $msix -DestinationPath $runtimeSource -Force
+    }
+}
 $missing = @()
 foreach ($name in $wanted) {
-    $src = Join-Path $Repo "target\release\$name"
+    $src = Join-Path $runtimeSource $name
     if (Test-Path $src) {
         Copy-Item $src -Destination (Join-Path $runtimeStage $name) -Recurse -Force
     } else {
@@ -129,8 +156,11 @@ if (-not $iscc) { throw '找不到 ISCC.exe：装 Inno Setup 7 或用 QINGJIAN_I
 Write-Host "用 $iscc" -ForegroundColor Cyan
 
 # 4) 编安装包。
-& $iscc "/DAppVersion=$Version" "/DAppVersionNumeric=$VersionNumeric" $Iss
+$isccArgs = @("/DAppVersion=$Version", "/DAppVersionNumeric=$VersionNumeric", "/DTargetX86=$X86")
+# GNU 编的设置程序只能在 Windows 11 上起（见 apps\windows\settings\build.rs）。
+if ($Gnu) { $isccArgs += '/DMinWindows=10.0.22000' }
+& $iscc @isccArgs $Iss
 if ($LASTEXITCODE -ne 0) { throw "iscc 失败（退出码 $LASTEXITCODE）" }
 
-$out = Join-Path $Repo "target\installer\qingjian-$Version-windows-x86_64-setup.exe"
+$out = Join-Path $Repo "target\installer\yiju-$Version-windows-x86_64-setup.exe"
 Write-Host "完成：$out" -ForegroundColor Green

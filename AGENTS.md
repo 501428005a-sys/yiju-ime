@@ -6,7 +6,7 @@
 ## 1. 项目是什么
 
 - 译句（YiJu）派生自青简 Qingjian v0.1.4（GPL-3.0-or-later），卖点是**整句翻译**：一句话打完，整句译文自动出现在候选窗下方。
-- 目前只维护 **Windows**。macOS / Linux 的代码原样保留，没有验证过。
+- 目前只维护 **Windows 11**（GNU 工具链编的安装包）。macOS / Linux 的代码原样保留，没有验证过。
 - 品牌：产品名「译句」、logo 在 `assets/icon/`（`make-logo.ps1` 生成 PNG 与 ICO）。「译句」名称与 logo 不在 GPL 授权范围内（见 README、NOTICE）。
 - **数据来源署名不能改**：词库、释义表、码表、语言模型是青简整理的，`assets/`、`tools/`、「关于」页里写「青简」的出处说明要保留，别批量替换成「译句」。
 
@@ -52,11 +52,16 @@ cargo test  --release -p qingjian-windows-server
 
 ## 4. 待办
 
-1. **独立安装包**：编 32 / 64 位 TSF DLL、设置程序（WinUI 3）、Inno Setup 打包，发到 Releases。
-   为了能和青简同时安装，还要换掉这些内部标识：TSF 的 CLSID / profile GUID / 显示属性 GUID（`apps/windows/tsf/src/com/mod.rs` 等）、
-   命名管道 `qingjian`、互斥体 `Global\QingjianInstaller` / `Local\QingjianServerLaunch` / `Local\QingjianSettings`、
-   窗口类名 `Qingjian*`、数据目录 `%APPDATA%\Qingjian` 与 `%LOCALAPPDATA%\Qingjian`、安装目录 `{autopf}\Qingjian`、启动项名。
-   安装器 AppId 已换新（`apps/windows/installer/qingjian.iss`）。
+1. **安装包（0.1.0 已能打）**：`apps\windows\installer\build.ps1 -Gnu`（GNU 工具链）或不带 `-Gnu`（MSVC，上游方式）。
+   - 装到 `{autopf}\YiJu`，新 AppId；**与青简互斥**：安装时检测到青简就提示先卸载（`[Code] RemoveQingjian`），两者共用 TSF 的
+     CLSID / profile GUID、命名管道 `qingjian`、数据目录 `%APPDATA%\Qingjian`（所以青简用户的配置与学习数据直接沿用）。
+     要做成可并存，得换掉这些内部标识（CLSID / profile / 显示属性 GUID 在 `apps/windows/tsf/src/com/`，管道名在
+     `crates/qingjian-platform/src/protocol/codec.rs`，互斥体 `*Qingjian*`，窗口类名 `Qingjian*`，数据目录在 `crates/qingjian-platform/src/dirs.rs`）。
+   - `-Gnu` 的不同：32 位 DLL 用 `i686-pc-windows-gnu`；设置程序的 Windows App Runtime 由 build.ps1 自己从 NuGet 取（缓存
+     `target\gnu-runtime`），自包含清单 `apps/windows/settings/self-contained.manifest` 由 build.rs 经 winresource 嵌入；
+     产物会 strip；**GNU 链接器没有 `/DELAYLOAD`，设置程序只能在 Windows 11 上启动**，所以 `-Gnu` 包的 MinVersion 是 10.0.22000。
+     要支持 Windows 10：用 MSVC 编设置程序，或给 GNU 版做延迟加载导入。
+   - 安装包没有代码签名（SmartScreen 会拦）；Server 不带 uiAccess（候选窗在开始菜单 / 任务栏搜索里可能被盖住）。
 2. **检查更新**：目前缺省关闭，`INDEX_URL` 指向本仓库 Releases 的 `releases.json`，但签名公钥还是上游的（`crates/qingjian-update`）。要启用得换成自己的 ed25519 密钥并在发版时签名。
 3. **打字准确度**：青简 0.1 的词库 / 语言模型偏小。派生项目 `rambocode/glimmer`（微明）0.1.10 换了全量语料三元语言模型、补了口语词，可考虑移植其数据。缺省领域词库只开了成语，可以考虑缺省全开。
 4. macOS：`assets/icon/menu.pdf` 已删，打包前要从 `menu.svg` 重新导出（命令见 `assets/icon/README.md`）。

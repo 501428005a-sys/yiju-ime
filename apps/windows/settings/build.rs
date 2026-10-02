@@ -15,11 +15,21 @@ fn main() {
 }
 
 /// 图标资源要 `rc.exe`（MSVC）编，只在 Windows 宿主上做；失败只警告，别让编译挂掉。
+/// GNU 目标还顺带嵌自包含清单（`self-contained.manifest`）：windows-reactor-setup 只会给 MSVC 目标嵌，
+/// 没有它 Reactor 不走自包含分支、找不到 exe 旁边的运行时。GNU 链接器没有 `/DELAYLOAD`，这样编出的
+/// 设置程序只能在 Windows 11 上启动（见 [`stage_windows_runtime`]）。
 #[cfg(windows)]
 fn embed_icon() {
     const ICON: &str = "../tsf/resources/qingjian.ico";
+    const MANIFEST: &str = "self-contained.manifest";
     println!("cargo:rerun-if-changed={ICON}");
-    if let Err(error) = winresource::WindowsResource::new().set_icon(ICON).compile() {
+    let mut resource = winresource::WindowsResource::new();
+    resource.set_icon(ICON);
+    if std::env::var("CARGO_CFG_TARGET_ENV").as_deref() == Ok("gnu") {
+        println!("cargo:rerun-if-changed={MANIFEST}");
+        resource.set_manifest_file(MANIFEST);
+    }
+    if let Err(error) = resource.compile() {
         println!("cargo:warning=嵌入设置程序图标失败: {error}");
     }
 }
