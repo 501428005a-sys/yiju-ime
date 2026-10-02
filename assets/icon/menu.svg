@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="22pt" height="16pt" viewBox="0 0 22 16">
+  <!-- 译句 macOS 输入法模板图标：黑色圆角键帽上镂空一个「译」字（系统只取 alpha）。 -->
+  <defs>
+    <mask id="glyph">
+      <rect width="22" height="16" fill="white"/>
+      <text x="11" y="12.6" text-anchor="middle" font-family="PingFang SC, Microsoft YaHei, sans-serif" font-weight="700" font-size="12" fill="black">译</text>
+    </mask>
+  </defs>
+  <rect x="2.5" y="0.5" width="17" height="15" rx="3.5" fill="black" mask="url(#glyph)"/>
+</svg>

@@ -1,0 +1,18 @@
+译句输入法 YiJu
+Copyright (C) 2026 501428005a-sys（译句输入法）
+
+本程序派生自「青简 Qingjian」（https://github.com/qingjian-team/qingjian，v0.1.4），
+原作品以 GNU General Public License v3.0 or later 发布，原有版权声明全部保留。
+本程序同样以 GNU General Public License v3.0 or later 发布，全文见 LICENSE。
+
+「译句」名称与 logo 不在上述许可的授权范围内。
+「青简」名称与 logo 归其原作者所有，本项目不使用其作为自身品牌。
+
+== 相对青简 v0.1.4 的修改（GPL-3.0 第 5 条 a 款要求的修改说明） ==
+
+2026-10-02
+- 新增「整句翻译」（句末译文）：上屏后停顿 1 秒、打出句末标点或回车时，把这段文字整句译成学习语言，
+  在候选窗口下方逐行显示（apps/windows/server/src/dispatch/echo/ 及 Windows Server 的候选窗输出、UI 绘制相关文件）。
+- 产品名称由「青简」改为「译句」；更换应用图标与 logo（assets/icon/、apps/windows/tsf/resources/qingjian.ico）。
+- 检查更新缺省关闭，下载与项目链接改指向本仓库；安装程序使用新的 AppId。
+- 数据来源与署名（词库、释义表、码表等由青简整理的部分）保持指向青简。
