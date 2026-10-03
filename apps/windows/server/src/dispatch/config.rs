@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use qingjian_platform::protocol::KeyModifiers;
 use qingjian_platform::{
     AppsConfig, CandidateRenderer, Config, KeyCombo, LayoutMode, PreeditMode, Scheme, SwitchKeys,
@@ -85,6 +87,9 @@ pub struct RouterConfig {
 
     /// 候选上是否显示辅码（`[general] aux_code_show`）。随帧下发给候选窗。
     pub aux_code_show: bool,
+
+    /// 整句翻译的译文到了之后停留多久（`[general] sentence_translation_seconds`）。
+    pub echo_show_for: Duration,
 }
 
 impl RouterConfig {
@@ -133,6 +138,7 @@ impl From<&Config> for RouterConfig {
             wubi: config.general.wubi(),
             aux_code_key: config.general.aux_code_key(),
             aux_code_show: config.general.aux_code_show,
+            echo_show_for: config.general.sentence_translation_duration(),
         }
     }
 }

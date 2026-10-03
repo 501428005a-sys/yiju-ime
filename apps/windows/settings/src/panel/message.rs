@@ -45,6 +45,8 @@ pub(crate) enum Message {
     CloudBaseUrl(String),
     CloudSlots(Option<f64>),
     CloudSentence(bool),
+    /// 整句翻译的译文停留秒数（`[general] sentence_translation_seconds`）。
+    SentenceTranslationSeconds(Option<f64>),
     TestConnection,
     CloudTestDone(Result<String, String>),
 

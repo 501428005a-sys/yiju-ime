@@ -142,6 +142,14 @@ impl Component for Settings {
                 self.save("predict", "slots", slots);
             }
             Message::CloudSentence(on) => self.save("predict", "sentence", on),
+            Message::SentenceTranslationSeconds(Some(value)) => {
+                let max = qingjian_platform::MAX_SENTENCE_TRANSLATION_SECONDS as i64;
+                self.save(
+                    "general",
+                    "sentence_translation_seconds",
+                    (value.round() as i64).clamp(1, max),
+                );
+            }
             Message::TestConnection => {
                 if matches!(self.cloud_status, CloudStatus::Testing) {
                     return;

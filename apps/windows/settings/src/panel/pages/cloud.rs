@@ -1,5 +1,6 @@
-//! 「云服务」页：本地整句模型开关（`[model]`）、`[predict]` 各项与「测试连接」（后台线程跑）。
+//! 「云服务」页：本地整句模型开关（`[model]`）、`[predict]` 各项、整句译文停留秒数（`[general]`）与「测试连接」（后台线程跑）。
 
+use qingjian_platform::MAX_SENTENCE_TRANSLATION_SECONDS;
 use qingjian_predict::{ConnectionTest, PredictConfig};
 use windows_reactor::*;
 
@@ -70,6 +71,15 @@ pub(crate) fn view(settings: &Settings, context: &mut ViewContext<Settings>) -> 
             ToggleSwitch::new()
                 .is_on(p.sentence)
                 .on_toggled(context.callback(Message::CloudSentence)),
+        ),
+        field(
+            "整句译文停留秒数",
+            "一句话打完后，整句译文在候选窗口下方显示多久（1–300 秒）。接着打字不会收起它。",
+            NumberBox::new()
+                .minimum(1.0)
+                .maximum(MAX_SENTENCE_TRANSLATION_SECONDS as f64)
+                .value(settings.config.general.sentence_translation_seconds as f64)
+                .on_value_changed(context.callback(Message::SentenceTranslationSeconds)),
         ),
         field(
             "接口地址",

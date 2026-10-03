@@ -3,7 +3,7 @@
 //! 「打完」有三种：上屏的文字以 。？！ 结尾、没在组句时按回车（聊天框里就是发送）、上屏后停顿 [`PAUSE`] 没再按键。
 //! 走自己的一条云端通道（与组句联想分开的 [`CloudPredictor`]）：打完紧接着敲下一句时，组句联想的新请求
 //! 不会把这条译文当过期结果丢掉。一发出就占一行「翻译中…」，译文到了原地换掉；每段各占一行、
-//! 各自停留 [`SHOW_FOR`]，旧的在上；接着打字时这些行
+//! 各自停留 `[general] sentence_translation_seconds`（缺省 20 秒），旧的在上；接着打字时这些行
 //! 接在候选下方，期间按键不收。只画在 Server 自绘的窗口里，不进发给 DLL 的帧。
 
 use std::time::{Duration, Instant};
@@ -14,9 +14,6 @@ use qingjian_predict::{CloudPredictor, PredictConfig};
 
 use super::Router;
 use super::key::{BACK, RETURN, is_navigation};
-
-/// 每段译文到了之后停留多久。
-const SHOW_FOR: Duration = Duration::from_secs(5);
 
 /// 「翻译中…」最多等多久；云端没回（超时、出错）就收掉这一行。
 const WAIT_FOR: Duration = Duration::from_secs(10);
@@ -207,7 +204,7 @@ impl Router {
                     Some(text) => {
                         let line = &mut self.echo.lines[index];
                         line.text = Some(text);
-                        line.until = now + SHOW_FOR;
+                        line.until = now + self.config.echo_show_for;
                     }
                     None => {
                         self.echo.lines.remove(index);

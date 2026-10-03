@@ -34,7 +34,8 @@ pub use aux_code::AuxCodeConfig;
 pub use candidate_renderer::CandidateRenderer;
 pub use dictionaries::{DEFAULT_DOMAINS, DictionariesConfig};
 pub use general::{
-    DEFAULT_PAGE_KEYS, GeneralConfig, LEARNING_LANGUAGE_OFF, MAX_PAGE_SIZE, PAGE_KEY_OPTIONS,
+    DEFAULT_PAGE_KEYS, GeneralConfig, LEARNING_LANGUAGE_OFF, MAX_PAGE_SIZE,
+    MAX_SENTENCE_TRANSLATION_SECONDS, PAGE_KEY_OPTIONS,
 };
 pub use key_combo::KeyCombo;
 pub use layout_mode::LayoutMode;
@@ -217,6 +218,8 @@ font = ""
 preedit = "both"
 # 英文模式（Caps Lock 亮着）是否给英文候选：Tab 或方向键选词，空格、回车、标点仍原样上屏敲的字母；false 就是纯直通
 english_candidates = true
+# 整句翻译的译文在候选窗口下停留几秒（1–300）。只有 Windows 用
+sentence_translation_seconds = 20
 
 # 繁体输出模式。开启后上屏繁体，不影响词库和个人词频的简体记录。
 traditional = false

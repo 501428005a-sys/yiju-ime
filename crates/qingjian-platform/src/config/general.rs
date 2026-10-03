@@ -12,6 +12,9 @@ pub const MAX_PAGE_SIZE: usize = 9;
 /// 拿它们翻页就得先按空格再敲标点。选 `-` `=` 时组句中的 `-` 是翻页，不再进英文直输段（#43）。
 pub const PAGE_KEY_OPTIONS: [&str; 3] = ["[]", ",.", "-="];
 
+/// 整句翻译的译文最多停留多少秒（设置窗口数字框的上限，配置里写更大的值按它算）。
+pub const MAX_SENTENCE_TRANSLATION_SECONDS: u64 = 300;
+
 /// 缺省翻页键对，与 [`PAGE_KEY_OPTIONS`] 第一项一致。
 pub const DEFAULT_PAGE_KEYS: (char, char) = ('[', ']');
 
@@ -51,6 +54,9 @@ pub struct GeneralConfig {
 
     /// 英文模式（Caps Lock 亮着）是否给英文候选（补全与拼错纠正）。关掉就是纯直通。
     pub english_candidates: bool,
+
+    /// 整句翻译的译文在候选窗口下停留几秒，1–[`MAX_SENTENCE_TRANSLATION_SECONDS`]。只有 Windows 用。
+    pub sentence_translation_seconds: u64,
 
     /// 繁体输出模式。
     pub traditional: bool,
@@ -129,6 +135,7 @@ impl Default for GeneralConfig {
             font: String::new(),
             preedit: PreeditMode::default(),
             english_candidates: true,
+            sentence_translation_seconds: 20,
             traditional: false,
             chinese_first: false,
             shift_letter: ShiftLetter::default(),
@@ -152,6 +159,14 @@ impl Default for GeneralConfig {
 }
 
 impl GeneralConfig {
+    /// 整句翻译的译文停留多久；越界的值夹到 1–[`MAX_SENTENCE_TRANSLATION_SECONDS`] 秒。
+    pub fn sentence_translation_duration(&self) -> std::time::Duration {
+        std::time::Duration::from_secs(
+            self.sentence_translation_seconds
+                .clamp(1, MAX_SENTENCE_TRANSLATION_SECONDS),
+        )
+    }
+
     /// 拼音侧方案。`scheme` 没写时用旧键（`shuangpin` / `zhuyin`）推，都没有就是全拼。
     pub fn scheme(&self) -> Scheme {
         let key = self.scheme.trim();

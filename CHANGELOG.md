@@ -4,6 +4,10 @@
 可选的「网盘：[名称](链接)」一行放 GitHub 下载不方便时的网盘地址，官网单独显示成按钮，不算更新条目。
 发版时 CI 从这里取该版本的说明写进 GitHub Release，并汇总成官网下载页用的 `releases.json`（`tools/release/releases_json.py`）。
 
+## 译句 · 未发布
+
+- 整句译文停留时间可设：「设置 → 云服务 → 整句译文停留秒数」（1–300 秒），缺省从 5 秒改为 20 秒；配置项 `[general] sentence_translation_seconds`
+
 ## 译句 0.1.0 · 2026-10-02 · beta
 
 - 第一个安装包：Windows 11，64 位；装着青简时会先提示卸载它，配置、密钥与学习数据沿用
