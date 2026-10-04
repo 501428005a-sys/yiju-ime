@@ -6,7 +6,7 @@
 ## 1. 项目是什么
 
 - 译句（YiJu）派生自青简 Qingjian v0.1.4（GPL-3.0-or-later），卖点是**整句翻译**：一句话打完，整句译文自动出现在候选窗下方。
-- 目前只维护 **Windows 11**（GNU 工具链编的安装包）。macOS / Linux 的代码原样保留，没有验证过。
+- 维护 **Windows 11**（GNU 工具链编的安装包）与 **macOS**（`apps/macos/scripts/bundle.sh --pkg`，Apple Silicon / Intel 各一个 pkg）。Linux 的代码原样保留，没有验证过。
 - 品牌：产品名「译句」、logo 在 `assets/icon/`（`make-logo.ps1` 生成 PNG 与 ICO）。「译句」名称与 logo 不在 GPL 授权范围内（见 README、NOTICE）。
 - **数据来源署名不能改**：词库、释义表、码表、语言模型是青简整理的，`assets/`、`tools/`、「关于」页里写「青简」的出处说明要保留，别批量替换成「译句」。
 
@@ -18,7 +18,9 @@
 - 继续打字时译文行接在候选下方，不参与高亮与选词，不上屏。私密输入框、少于 2 个汉字（`MIN_HAN`）不翻译。
 - 目标语言 = 学习语言（没开学习语言时英文）。
 
-实现（全部在 Windows Server，DLL / 协议 / Core / 其他平台都没动）：
+实现（Windows 在 Server 里，macOS 在 IMK 壳里，规则相同；DLL / 协议 / Core / Linux 都没动）：
+
+**Windows**
 
 | 文件 | 作用 |
 | --- | --- |
@@ -27,6 +29,19 @@
 | `dispatch/candidates/{mod,sink}.rs` | `reconcile_candidates` 带上译文行（帧空但有译文时不收窗，位置退到最近的光标矩形）；`CandidateSink::show_with_echo` |
 | `ui/mod.rs`、`ui/command.rs`、`ui/candidates/{mod,render_data,row}.rs` | 译文行画成候选后面的行，序号位写「译」（`row::echo`） |
 | `dispatch/key/`、`dispatch/session/`、`dispatch/reload/`、`main.rs` | 导航键判定、换会话清半句、启动 / 热加载时 `attach_echo` |
+
+**macOS**（`apps/macos/src/`）
+
+| 文件 | 作用 |
+| --- | --- |
+| `host/echo/mod.rs` | 全部逻辑（与 Windows 的 `dispatch/echo` 对应）：攒上屏文字、三种触发、专用 `CloudPredictor`、占位 / 替换 / 过期、译文行（`echo_rows`） |
+| `host/echo/echo_monitor.rs` | 0.1 秒的 NSTimer：IMK 没有 DLL 那样的轮询节拍，停顿判定、收译文、到点收起都靠它；没事可做就停 |
+| `imk/controller/mod.rs` | `insert()`：上屏的唯一出口，顺带 `note_echo_commit`；每个按键 `note_echo_key`；`deactivateServer:` 时 `clear_echo` |
+| `imk/controller/{command,text}.rs` | 没在组句时：退格 / 回车 / 挪光标改攒的句子；直通字符走 `Host::note_passthrough`（包了 `Engine::note_passthrough`） |
+| `host/presenting/mod.rs` | `render` 把译文行接在候选后面（序号位「译」，矩阵展开时不接）；没有候选时不高亮任何行 |
+| `host/config/mod.rs`、`preferences/pages/cloud.rs` | `[predict]` 变了时 `attach_echo`；「云服务」页的「整句译文停留」菜单写 `[general] sentence_translation_seconds` |
+
+macOS 没有「私密输入框」标志，用 Secure Input（密码框）判断不发。
 
 为什么这样设计：
 - **不改 `Frame` / 协议**：`Frame` 在 Linux、macOS 也有构造，老 DLL 也要能解析。译文行只进 Server 自绘窗；**发给 DLL 的帧里绝不能有它**（DLL 见到非空帧会以为在组句、开始吃键）。
@@ -64,5 +79,5 @@ cargo test  --release -p qingjian-windows-server
    - 安装包没有代码签名（SmartScreen 会拦）；Server 不带 uiAccess（候选窗在开始菜单 / 任务栏搜索里可能被盖住）。
 2. **检查更新**：目前缺省关闭，`INDEX_URL` 指向本仓库 Releases 的 `releases.json`，但签名公钥还是上游的（`crates/qingjian-update`）。要启用得换成自己的 ed25519 密钥并在发版时签名。
 3. **打字准确度**：青简 0.1 的词库 / 语言模型偏小。派生项目 `rambocode/glimmer`（微明）0.1.10 换了全量语料三元语言模型、补了口语词，可考虑移植其数据。缺省领域词库只开了成语，可以考虑缺省全开。
-4. macOS：`assets/icon/menu.pdf` 已删，打包前要从 `menu.svg` 重新导出（命令见 `assets/icon/README.md`）。
+4. macOS：`assets/icon/menu.pdf` 已从 `menu.svg` 重新导出（本机没有 rsvg-convert，用 CoreGraphics 画的：键帽减去 PingFang SC Semibold 的「译」字轮廓）。pkg 没有 Developer ID 签名与公证，首次安装要在「隐私与安全性」里点「仍要打开」。
 5. 用户文档 `docs/user/` 还没写整句翻译的说明页。

@@ -165,6 +165,7 @@ pub fn init(mtm: MainThreadMarker, info: &BundleInfo) -> Result<(), HostError> {
             update_status: UpdateStatus::default(),
             session: Session::default(),
             sentence: None,
+            echo: Echo::new(mtm),
             anchor: NSRect::ZERO,
         })
     });

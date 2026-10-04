@@ -133,6 +133,7 @@ define_class!(
                 // 切换输入源时无论如何都收掉候选框，不能留一个孤儿窗口在屏幕上
                 host::with(|h| {
                     h.cancel_prediction();
+                    h.clear_echo();
                     h.window.hide();
                     h.indicator.deactivate();
                     h.watch.stop();
@@ -182,6 +183,12 @@ fn digit_key(key_code: u16) -> Option<usize> {
 }
 
 impl QingjianInputController {
+    /// 文字上屏，顺带记进整句翻译正在攒的这句话。
+    fn insert(&self, client: TextClient<'_>, text: &str) {
+        client.insert_text(text);
+        host::with(|h| h.note_echo_commit(text));
+    }
+
     /// 登录 / 锁屏窗口：输入源菜单里没有译句，loginwindow 却照样激活它，按键一律交还系统。
     ///
     /// TODO(#190): 临时防护。现象是开机登录界面打不进模式键（u / i），推断为按键进了译句的组句；
@@ -210,8 +217,11 @@ impl QingjianInputController {
             control,
             command,
         };
-        // 提示在显示：敲任何键先收掉，键照常处理
-        host::with(|h| h.clear_notice());
+        // 提示在显示：敲任何键先收掉，键照常处理；句末译文的停顿从最后一键算
+        host::with(|h| {
+            h.clear_notice();
+            h.note_echo_key();
+        });
         // 翻译选中文字进行中：回车 / 空格 / 1 接受，Esc 放弃，其他键放弃后照常交给应用
         if host::with(|h| h.translation.is_some()).unwrap_or(false) {
             return self.handle_translation_review(key, client);

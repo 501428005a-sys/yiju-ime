@@ -3,7 +3,7 @@
 #
 #   scripts/bundle.sh            # 只打包到 target/Qingjian.app
 #   scripts/bundle.sh --install  # 打包并安装到 ~/Library/Input Methods/，杀掉旧进程（开发用）
-#   scripts/bundle.sh --pkg      # 打包并做成 target/pkg/qingjian-<版本>-macos-<arm64|x86_64>.pkg（分发给测试者）
+#   scripts/bundle.sh --pkg      # 打包并做成 target/pkg/yiju-<版本>-macos-<arm64|x86_64>.pkg（分发给测试者）
 #
 # 架构：缺省编译本机架构；QINGJIAN_TARGET=x86_64-apple-darwin（或 aarch64-apple-darwin）交叉编译另一种，
 # 先 `rustup target add` 一次。CI 在 Apple Silicon runner 上两个都打（.github/workflows/release.yml）。
@@ -154,7 +154,7 @@ echo "打包完成: ${APP}（版本 ${VERSION}，构建 ${BUILD_NUMBER}，${ARCH
 
 if [[ "${1:-}" == "--pkg" ]]; then
   # 每个架构一个工作目录，成品都放 target/pkg/，两个架构接着打互不覆盖
-  PKG="$ROOT/target/pkg/qingjian-$VERSION-macos-$ARCH.pkg"
+  PKG="$ROOT/target/pkg/yiju-$VERSION-macos-$ARCH.pkg"
   PKG_DIR="$ROOT/target/pkg/$ARCH"
   rm -rf "$PKG_DIR"
   mkdir -p "$PKG_DIR/root" "$PKG_DIR/resources"

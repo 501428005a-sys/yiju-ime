@@ -91,7 +91,7 @@ impl QingjianInputController {
         match text {
             Some(text) => {
                 tracing::debug!(%text, "commit translation");
-                client.insert_text(&text);
+                self.insert(client, &text);
                 self.refresh(client);
             }
             None => tracing::debug!(digit, sense, "这个候选没有这条译文"),

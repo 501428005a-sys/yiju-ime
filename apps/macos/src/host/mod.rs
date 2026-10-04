@@ -9,6 +9,7 @@ mod cloud;
 mod config;
 mod diagnostics;
 mod dictionaries;
+mod echo;
 mod init;
 mod model;
 mod presenting;
@@ -49,6 +50,7 @@ use crate::preferences::{PreferencesWindow, Setting, SettingValue, UpdateStatus}
 use cloud::{CloudTestMonitor, PredictMonitor};
 use config::{ConfigWatch, TextReplacement};
 pub use dictionaries::DictionaryInfo;
+use echo::Echo;
 pub use init::init;
 use model::RescoreMonitor;
 use presenting::Notice;
@@ -182,6 +184,9 @@ pub struct Host {
 
     /// 组句中到达的整句补全，Tab 接受。
     pub sentence: Option<String>,
+
+    /// 句末译文（整句翻译）：一句打完后接在候选下方的译文行。
+    echo: Echo,
 
     /// 最近一次绘制时的光标矩形，联想结果到达后在同一位置重画。
     pub anchor: NSRect,

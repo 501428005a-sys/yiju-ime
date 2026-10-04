@@ -76,7 +76,7 @@ impl QingjianInputController {
         let Some(mark) = restored else {
             return false;
         };
-        client.insert_text(&mark);
+        self.insert(client, &mark);
         self.refresh(client);
         true
     }
@@ -131,7 +131,7 @@ impl QingjianInputController {
         };
         host::with(|h| h.engine.accept_prediction(&text));
         tracing::debug!(%text, "接受整句补全");
-        client.insert_text(&text);
+        self.insert(client, &text);
         self.refresh(client);
         true
     }

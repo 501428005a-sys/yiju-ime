@@ -10,17 +10,24 @@ impl QingjianInputController {
         let composing = host::with(|h| !h.engine.composition().is_empty()).unwrap_or(false);
         if !composing {
             // 删的是应用里的文字：刚上屏的词被整个删掉是「选错了」的信号，Engine 记着；
-            // 按词 / 按行删的数不清删了几个字，撤销的账就不记了
-            if selector == sel!(deleteBackward:) {
-                host::with(|h| h.engine.note_backspace());
-            } else if selector == sel!(deleteWordBackward:)
-                || selector == sel!(deleteToBeginningOfLine:)
-            {
-                host::with(|h| h.engine.break_chain());
-            } else if selector == sel!(insertNewline:) {
-                // 回车交给应用：文本流里是一个段落边界
-                host::with(|h| h.engine.note_passthrough('\n'));
-            }
+            // 按词 / 按行删的数不清删了几个字，撤销的账就不记了。
+            // 句末译文攒的这句话跟着改：退格去掉一个字，回车算一句结束，其他（挪光标、按词删）说明去别处改了，半句作废
+            host::with(|h| {
+                if selector == sel!(deleteBackward:) {
+                    h.engine.note_backspace();
+                    h.note_echo_backspace();
+                } else if selector == sel!(deleteWordBackward:)
+                    || selector == sel!(deleteToBeginningOfLine:)
+                {
+                    h.engine.break_chain();
+                    h.clear_echo_buffer();
+                } else if selector == sel!(insertNewline:) {
+                    // 回车交给应用：文本流里是一个段落边界
+                    h.note_passthrough('\n');
+                } else {
+                    h.clear_echo_buffer();
+                }
+            });
             return false;
         }
         if selector == sel!(deleteBackward:) {

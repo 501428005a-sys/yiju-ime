@@ -173,6 +173,9 @@ pub enum Setting {
     /// `[predict] slots`，弹出菜单 0–4：第一页末尾留给云端词的格数。
     CloudSlots,
 
+    /// `[general] sentence_translation_seconds`，弹出菜单：整句译文停留几秒（选项见 `SENTENCE_TRANSLATION_SECONDS`）。
+    SentenceTranslationSeconds,
+
     /// `[apps] english_candidates_off`，勾选框：勾上写缺省的终端 / 编辑器列表，去掉写空表。
     EnglishCandidatesOffInApps,
 
@@ -232,6 +235,7 @@ impl Setting {
             Self::CopyDiagnostics => 23,
             Self::ExportLogs => 48,
             Self::CloudSlots => 24,
+            Self::SentenceTranslationSeconds => 57,
             Self::EnglishCandidatesOffInApps => 25,
             Self::DeleteCandidateKeys => 26,
             Self::InputLog => 27,
@@ -299,6 +303,7 @@ impl Setting {
             23 => Self::CopyDiagnostics,
             48 => Self::ExportLogs,
             24 => Self::CloudSlots,
+            57 => Self::SentenceTranslationSeconds,
             25 => Self::EnglishCandidatesOffInApps,
             26 => Self::DeleteCandidateKeys,
             27 => Self::InputLog,
@@ -379,6 +384,7 @@ mod tests {
             Setting::CopyDiagnostics,
             Setting::ExportLogs,
             Setting::CloudSlots,
+            Setting::SentenceTranslationSeconds,
             Setting::EnglishCandidatesOffInApps,
             Setting::DeleteCandidateKeys,
             Setting::InputLog,

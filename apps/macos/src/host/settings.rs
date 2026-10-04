@@ -2,7 +2,7 @@
 
 use super::diagnostics::{copy_to_pasteboard, open_with_system};
 use super::*;
-use crate::preferences::DEFAULT_FONT_LABEL;
+use crate::preferences::{DEFAULT_FONT_LABEL, SENTENCE_TRANSLATION_SECONDS};
 use qingjian_platform::ShiftLetter;
 
 impl Host {
@@ -348,6 +348,15 @@ impl Host {
             }
             (Setting::CloudSlots, SettingValue::Index(index)) => {
                 self.settings.set_value("predict", "slots", index as i64);
+            }
+            (Setting::SentenceTranslationSeconds, SettingValue::Index(index)) => {
+                if let Some(seconds) = SENTENCE_TRANSLATION_SECONDS.get(index) {
+                    self.settings.set_value(
+                        "general",
+                        "sentence_translation_seconds",
+                        *seconds as i64,
+                    );
+                }
             }
             (Setting::Traditional, SettingValue::Bool(on)) => {
                 self.settings.set_bool("general", "traditional", on);

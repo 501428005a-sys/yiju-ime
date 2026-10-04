@@ -37,6 +37,7 @@ impl Host {
         self.preedit_mode = config.general.preedit;
         self.english_candidates = config.general.english_candidates;
         self.apps = config.apps.clone();
+        self.set_echo_duration(config.general.sentence_translation_duration());
         self.window.set_theme(config.general.theme);
         self.window.set_layout(config.general.layout);
         if self.layout != config.general.layout
@@ -75,6 +76,7 @@ impl Host {
                 self.engine.set_predictor(Box::new(NoPredictor));
                 self.engine.set_gloss_filler(Box::new(NoGlossFiller));
             }
+            self.attach_echo(&config.predict);
             self.monitor.stop();
             self.sentence = None;
             self.applied_predict = config.predict.clone();

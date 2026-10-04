@@ -1,4 +1,4 @@
-//! 「云服务」页：本地整句模型开关，云联想开关、云端词格数、接口地址 / 模型 / 密钥、测试连接。
+//! 「云服务」页：本地整句模型开关，云联想开关、云端词格数、整句译文停留秒数、接口地址 / 模型 / 密钥、测试连接。
 
 use objc2::MainThreadMarker;
 use objc2::rc::Retained;
@@ -17,6 +17,9 @@ use crate::preferences::target::PreferencesTarget;
 /// 云端词槽位弹出菜单的上限（配置文件里可以填更大，菜单只列到这）。
 const MAX_CLOUD_SLOTS: usize = 4;
 
+/// 整句译文停留秒数的选项；配置文件里填了别的值时菜单选最接近的一项。
+pub const SENTENCE_TRANSLATION_SECONDS: [u64; 6] = [5, 10, 20, 30, 60, 120];
+
 pub struct CloudPage {
     /// 本地整句模型开关。
     local_model: Retained<NSButton>,
@@ -26,6 +29,9 @@ pub struct CloudPage {
 
     /// 云端词槽位数（0–4）。
     slots: Retained<NSPopUpButton>,
+
+    /// 整句译文停留秒数。
+    sentence_seconds: Retained<NSPopUpButton>,
 
     /// 接口地址。
     base_url: Retained<NSTextField>,
@@ -75,6 +81,23 @@ impl CloudPage {
             mtm,
             "云端词到了只补进第一页末尾这几格（比如 2 就是 8、9），前面的本地候选不动；没到就什么都不变，翻页后全是本地候选。",
         );
+        let second_titles: Vec<String> = SENTENCE_TRANSLATION_SECONDS
+            .iter()
+            .map(|n| format!("{n} 秒"))
+            .collect();
+        let sentence_seconds = row_popup(
+            layout,
+            mtm,
+            "整句译文停留",
+            &second_titles,
+            Setting::SentenceTranslationSeconds,
+            target,
+        );
+        note(
+            layout,
+            mtm,
+            "整句翻译：一句话打完（停顿 1 秒、打出 。？！ 或按回车），整句译文接在候选窗口下方，停留这么久后自动收起。",
+        );
         let base_url = text_field(mtm, Setting::BaseUrl, target);
         row_control(layout, mtm, "接口地址", &base_url);
         let model = text_field(mtm, Setting::Model, target);
@@ -98,6 +121,7 @@ impl CloudPage {
             local_model,
             enabled,
             slots,
+            sentence_seconds,
             base_url,
             model,
             api_key,
@@ -113,11 +137,19 @@ impl CloudPage {
         set_checked(&self.enabled, config.predict.enabled);
         let cloud = config.predict.enabled;
         self.slots.setEnabled(cloud);
+        self.sentence_seconds.setEnabled(cloud);
         self.base_url.setEnabled(cloud);
         self.model.setEnabled(cloud);
         self.api_key.setEnabled(cloud);
         self.test.setEnabled(cloud);
         select(&self.slots, Some(config.predict.slots.min(MAX_CLOUD_SLOTS)));
+        let seconds = config.general.sentence_translation_seconds;
+        let closest = SENTENCE_TRANSLATION_SECONDS
+            .iter()
+            .enumerate()
+            .min_by_key(|(_, n)| n.abs_diff(seconds))
+            .map(|(i, _)| i);
+        select(&self.sentence_seconds, closest);
         self.base_url
             .setStringValue(&NSString::from_str(&config.predict.base_url));
         self.model

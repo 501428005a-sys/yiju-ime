@@ -117,6 +117,17 @@ impl Host {
                 row
             })
             .collect();
+        // 没有候选（没在组句）时谁都不高亮，否则第一行译文会被当成高亮项
+        let highlighted = if rows.is_empty() {
+            usize::MAX
+        } else {
+            self.session.highlighted.saturating_sub(first)
+        };
+        // 句末译文接在候选后面各占一行（矩阵展开时不接，免得混进格子里）；没在组句时窗口里只有它们
+        let mut rows = rows;
+        if columns == 0 {
+            rows.extend(self.echo_rows());
+        }
         // 页上的译词告诉 Engine：用户上屏那一刻它们在屏幕上，算「见过」（词汇记录）；窗口收起时传空
         self.engine
             .note_displayed(cells.iter().copied().filter_map(Cell::candidate));
@@ -135,7 +146,7 @@ impl Host {
         let frame = Frame {
             preedit,
             rows,
-            highlighted: self.session.highlighted.saturating_sub(first),
+            highlighted,
             columns,
             column_ems: if columns > 0 {
                 qingjian_core::Grid::column_ems(&self.session.layout)

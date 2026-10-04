@@ -21,7 +21,7 @@ impl QingjianInputController {
             return false;
         };
         tracing::debug!(%text, "commit");
-        client.insert_text(&text);
+        self.insert(client, &text);
         self.refresh(client);
         true
     }
@@ -35,7 +35,7 @@ impl QingjianInputController {
             return false;
         }
         tracing::debug!(%raw, "commit raw");
-        client.insert_text(&raw);
+        self.insert(client, &raw);
         self.refresh(client);
         true
     }

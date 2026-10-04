@@ -18,6 +18,7 @@ pub use about::{REPOSITORY_URL, UpdateStatus, WEBSITE_URL};
 pub(super) use advanced::AdvancedPage;
 pub(super) use candidates::CandidatesPage;
 pub(super) use cloud::CloudPage;
+pub use cloud::SENTENCE_TRANSLATION_SECONDS;
 pub(super) use dictionaries::DictionariesPage;
 pub(super) use fuzzy::FuzzyPage;
 pub(super) use general::GeneralPage;
